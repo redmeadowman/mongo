@@ -18,6 +18,13 @@
  */
 
 #include "pch.h"
+#include "../db/ops/query.h"
+#include "../db/dbhelpers.h"
+#include "../db/clientcursor.h"
+
+#include "../db/instance.h"
+#include "../db/json.h"
+#include "../db/lasterror.h"
 
 #include "../util/ip_addr.h"
 
