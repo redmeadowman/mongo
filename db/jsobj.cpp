@@ -31,6 +31,8 @@
 #include "json.h"
 #include "jsobjmanipulator.h"
 #include "../util/optime.h"
+#include "../util/ip_addr.h"
+#include "../util/mac_addr.h"
 #include <boost/static_assert.hpp>
 #undef assert
 #define assert MONGO_assert
@@ -161,14 +163,38 @@ namespace mongo {
         case BinData: {
             int len = *(int *)( value() );
             BinDataType type = BinDataType( *(char *)( (int *)( value() ) + 1 ) );
-            s << "{ \"$binary\" : \"";
             char *start = ( char * )( value() ) + sizeof( int ) + 1;
-            base64::encode( s , start , len );
-            s << "\", \"$type\" : \"" << hex;
-            s.width( 2 );
-            s.fill( '0' );
-            s << type << dec;
-            s << "\" }";
+            switch (type) {
+            case bdtUUID:
+                s << "{ \"$uuid\" : \"";
+                s << toHex(start, 16);
+                s << "\" }";
+                break;
+            case bdtIpAddr: {
+                const IP_Addr ip(start, len);
+                s << "{ \"$ipaddr\" : \"";
+                s << ip.print();
+                s << "\" }";
+                break;
+                }
+            case bdtMacAddr: {
+                const MAC_Addr* mac = new ((void*)start) MAC_Addr;
+                s << "{ \"$macaddr\" : \"";
+                s << mac->print();
+                s << "\" }";
+                break;
+                }
+            default: {
+                s << "{ \"$binary\" : \"";
+                base64::encode( s , start , len );
+                s << "\", \"$type\" : \"" << hex;
+                s.width( 2 );
+                s.fill( '0' );
+                s << type << dec;
+                s << "\" }";
+                break;
+                }
+            } // end switch
             break;
         }
         case mongo::Date:

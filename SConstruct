@@ -138,6 +138,7 @@ add_option( "boost-version", "boost version for linking(1_38)" , 1 , True , "boo
 # experimental features
 add_option( "mm", "use main memory instead of memory mapped files" , 0 , True )
 add_option( "asio" , "Use Asynchronous IO (NOT READY YET)" , 0 , True )
+add_option( "cppflags" , "Set custom cppflags, overriding everything else" , 1 , True )
 add_option( "ssl" , "Enable SSL" , 0 , True )
 
 # library choices
@@ -332,7 +333,7 @@ commonFiles += [ "util/background.cpp" , "util/util.cpp" , "util/file_allocator.
                  "util/assert_util.cpp" , "util/log.cpp" , "util/ramlog.cpp" , "util/md5main.cpp" , "util/base64.cpp", "util/concurrency/vars.cpp", "util/concurrency/task.cpp", "util/debug_util.cpp",
                  "util/concurrency/thread_pool.cpp", "util/password.cpp", "util/version.cpp", "util/signal_handlers.cpp",  
                  "util/histogram.cpp", "util/concurrency/spin_lock.cpp", "util/text.cpp" , "util/stringutils.cpp" ,
-                 "util/concurrency/synchronization.cpp" ]
+                 "util/concurrency/synchronization.cpp", "util/ip_addr.cpp" ]
 commonFiles += [ "util/net/sock.cpp" , "util/net/httpclient.cpp" , "util/net/message.cpp" , "util/net/message_port.cpp" , "util/net/listen.cpp" ]
 commonFiles += Glob( "util/*.c" ) 
 commonFiles += Split( "client/connpool.cpp client/dbclient.cpp client/dbclient_rs.cpp client/dbclientcursor.cpp client/model.cpp client/syncclusterconnection.cpp client/distlock.cpp s/shardconnection.cpp" )
@@ -670,9 +671,13 @@ if nix:
         env["CXX"] = "distcc " + env["CXX"]
         
     # -Winvalid-pch Warn if a precompiled header (see Precompiled Headers) is found in the search path but can't be used. 
-    env.Append( CPPFLAGS="-fPIC -fno-strict-aliasing -ggdb -pthread -Wall -Wsign-compare -Wno-unknown-pragmas -Winvalid-pch" )
     # env.Append( " -Wconversion" ) TODO: this doesn't really work yet
-    if linux:
+    cppflags = GetOption("cppflags")
+    if cppflags:
+        env.Append( CPPFLAGS= cppflags )
+    else:
+        env.Append( CPPFLAGS="-fPIC -fno-strict-aliasing -ggdb -pthread -Wall -Wsign-compare -Wno-unknown-pragmas -Winvalid-pch" )
+    if linux and not cppflags:
         env.Append( CPPFLAGS=" -Werror " )
         if not has_option('clang'): 
             env.Append( CPPFLAGS=" -fno-builtin-memcmp " ) # glibc's memcmp is faster than gcc's
@@ -692,7 +697,7 @@ if nix:
     if debugBuild:
         env.Append( CPPFLAGS=" -O0 -fstack-protector " );
         env['ENV']['GLIBCXX_FORCE_NEW'] = 1; # play nice with valgrind
-    else:
+    elif not cppflags:
         env.Append( CPPFLAGS=" -O3 " )
         #env.Append( CPPFLAGS=" -fprofile-generate" )
         #env.Append( LINKFLAGS=" -fprofile-generate" )
